@@ -1,20 +1,26 @@
 # -*- coding: utf-8 -*-
 
-# 使用spider类创建的腾讯招聘爬虫
+# 使用crawlspider类创建的腾讯招聘爬虫
 
 import scrapy
+from scrapy.linkextractors import LinkExtractor
+from scrapy.spiders import CrawlSpider, Rule
 from tengxun.items import TengxunItem
-import re
 
 
-class TxzpSpider(scrapy.Spider):
-    name = "txzp"
-    allowed_domains = ["hr.tencent.com"]
-    start_urls = (
-        'http://hr.tencent.com/position.php?&start=0#a',
+class TxzpCsSpider(CrawlSpider):
+    name = 'txzp_cs'
+    allowed_domains = ['hr.tencent.com']
+    start_urls = ['http://hr.tencent.com/position.php?&start=0#a']
+
+    rules = (
+        Rule(LinkExtractor(allow=r'start=\d+'), callback='parseContent', follow=True),
     )
+    print '--------------------'
+    print LinkExtractor(allow=r'start=\d+')
+    print '--------------------'
 
-    def parse(self, response):
+    def parseContent(self, response):
         for each in response.xpath('//tr[@class="odd"]|//tr[@class="even"]'):
             item = TengxunItem()
             name = each.xpath('./td[1]/a/text()').extract()[0]
@@ -35,19 +41,4 @@ class TxzpSpider(scrapy.Spider):
             item['workLocation'] = workLocation
             item['publishTime'] = publishTime
 
-            curpage = re.search('(\d+)',response.url).group(1)
-            page = int(curpage) + 10
-            url = re.sub('\d+', str(page), response.url)
-
-            # 发送发送新的url请求加入待爬队列，并调用回调函数 self.parse
-            yield scrapy.Request(url, callback = self.parse)
-
-            # 将获取的数据交给pipeline
             yield item
-
-
-
-
-
-
-
